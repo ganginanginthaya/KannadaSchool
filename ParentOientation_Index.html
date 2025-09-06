@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parent Orientation Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals with Soft Teal Accent -->
+    <!-- Application Structure Plan: The application is structured as an interactive, single-page dashboard. A top navigation bar allows parents to jump to specific sections (Welcome, Classroom, Logistics, Q&A), which promotes non-linear, task-oriented exploration. This is more user-friendly than a static document, as parents can quickly access the information most relevant to them, like the "Logistics" section. Key interactions include a dynamic chart visualizing the meeting's time breakdown for a quick overview, and an interactive checklist for the online setup process to guide parents through the required actions. This design prioritizes clarity, engagement, and ease of use. -->
+    <!-- Visualization & Content Choices: 
+        - Meeting Agenda Breakdown -> Goal: Inform -> Viz: Doughnut Chart -> Interaction: Hover for details -> Justification: Provides a quick, visual summary of the meeting's time allocation, making it more digestible than text alone. -> Library: Chart.js (Canvas).
+        - Class Routine -> Goal: Inform -> Presentation: Icon-based timeline (HTML/CSS/Unicode) -> Interaction: Subtle hover effects -> Justification: Visually represents the flow of the class hour in a simple, scannable format. -> Library/Method: HTML/Tailwind.
+        - Online Logistics -> Goal: Organize/Guide -> Presentation: Interactive Checklist -> Interaction: Click to check off items -> Justification: Turns passive instructions into an active task list, helping parents track their progress and ensuring they complete all necessary steps. -> Library/Method: Vanilla JS.
+        - Q&A -> Goal: Inform/Organize -> Presentation: Accordion List -> Interaction: Click to expand/collapse answers -> Justification: Presents questions and answers in a compact format, reducing clutter and allowing parents to focus on specific queries. -> Library/Method: Vanilla JS. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fdfaf7;
+            color: #4a4a4a;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link.active, .nav-link:hover {
+            color: #14B8A6; /* Teal 500 */
+            border-bottom-color: #14B8A6;
+        }
+        .task-item input:checked + label span:first-child {
+            background-color: #14B8A6;
+            border-color: #14B8A6;
+        }
+        .task-item input:checked + label span:last-child {
+            text-decoration: line-through;
+            color: #9ca3af;
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .accordion-item.open .accordion-content {
+            max-height: 500px;
+        }
+        .accordion-item.open .accordion-icon {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="min-h-screen">
+        <header class="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
+            <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center">
+                        <span class="text-xl font-bold text-gray-800">Siri Kannada Shaale Nashville</span>
+                    </div>
+                    <div class="hidden md:block">
+                        <div class="ml-10 flex items-baseline space-x-4">
+                            <a href="#welcome" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-700">Welcome</a>
+                            <a href="#structure" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-700">Class Structure</a>
+                            <a href="#logistics" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-700">Online Logistics</a>
+                            <a href="#qa" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-700">Q & A</a>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        </header>
+
+        <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
+            <!-- Welcome Section -->
+            <section id="welcome" class="scroll-mt-20 text-center">
+                <h1 class="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+                    Welcome, Parents!
+                    <span class="block text-3xl font-semibold mt-2 text-teal-600">ಸ್ವಾಗತ!</span>
+                </h1>
+                <p class="mt-6 text-lg leading-8 text-gray-600">We're thrilled to have you here. This orientation will walk you through our class structure, online tools, and everything you need for a successful year. Let's get started!</p>
+            </section>
+
+            <!-- Meeting Overview Section -->
+            <section id="overview" class="scroll-mt-20 mt-16 md:mt-24">
+                 <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold text-gray-900">Meeting Agenda at a Glance</h2>
+                    <p class="mt-4 text-md text-gray-600">The orientation is designed to be concise and informative, lasting about 30-45 minutes. Here’s a breakdown of our time together.</p>
+                </div>
+                <div class="chart-container">
+                    <canvas id="agendaChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Class Structure Section -->
+            <section id="structure" class="scroll-mt-20 mt-16 md:mt-24">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold text-gray-900">Our Classroom: Structure & Routine</h2>
+                    <p class="mt-4 text-md text-gray-600">Our one-hour class follows a consistent routine to help students feel comfortable and ready to learn.</p>
+                </div>
+                <div class="max-w-4xl mx-auto">
+                    <div class="relative">
+                        <div class="absolute left-1/2 w-0.5 h-full bg-teal-200" aria-hidden="true"></div>
+                        <div class="space-y-12">
+                            <div class="flex items-center">
+                                <div class="w-1/2 flex justify-end pr-8">
+                                    <div class="bg-white p-6 rounded-lg shadow-lg text-right">
+                                        <h3 class="text-lg font-semibold text-gray-800">Opening Prayer</h3>
+                                        <p class="mt-1 text-gray-600">We begin each class with a moment of peace and reflection.</p>
+                                    </div>
+                                </div>
+                                <div class="w-10 h-10 bg-teal-500 rounded-full flex items-center justify-center text-white font-bold z-10">🙏</div>
+                                <div class="w-1/2"></div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-1/2"></div>
+                                <div class="w-10 h-10 bg-teal-500 rounded-full flex items-center justify-center text-white font-bold z-10">📚</div>
+                                <div class="w-1/2 flex justify-start pl-8">
+                                     <div class="bg-white p-6 rounded-lg shadow-lg text-left">
+                                        <h3 class="text-lg font-semibold text-gray-800">Chapters (Kante 1-12)</h3>
+                                        <p class="mt-1 text-gray-600">We'll cover a new chapter, or "Kante," every 2-4 weeks, depending on the class's learning pace.</p>
+                                    </div>
+                                </div>
+                            </div>
+                             <div class="flex items-center">
+                                <div class="w-1/2 flex justify-end pr-8">
+                                     <div class="bg-white p-6 rounded-lg shadow-lg text-right">
+                                        <h3 class="text-lg font-semibold text-gray-800">Interactive Learning</h3>
+                                        <p class="mt-1 text-gray-600">The core of our class is filled with engaging activities, games, and discussions to reinforce the lesson.</p>
+                                    </div>
+                                </div>
+                                <div class="w-10 h-10 bg-teal-500 rounded-full flex items-center justify-center text-white font-bold z-10">🎨</div>
+                                <div class="w-1/2"></div>
+                            </div>
+                             <div class="flex items-center">
+                                <div class="w-1/2"></div>
+                                <div class="w-10 h-10 bg-teal-500 rounded-full flex items-center justify-center text-white font-bold z-10">🔄</div>
+                                <div class="w-1/2 flex justify-start pl-8">
+                                     <div class="bg-white p-6 rounded-lg shadow-lg text-left">
+                                        <h3 class="text-lg font-semibold text-gray-800">Homework & Repetition</h3>
+                                        <p class="mt-1 text-gray-600">We will discuss homework assignments and practice repetition to strengthen understanding.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-1/2 flex justify-end pr-8">
+                                     <div class="bg-white p-6 rounded-lg shadow-lg text-right">
+                                        <h3 class="text-lg font-semibold text-gray-800">Closing Prayer</h3>
+                                        <p class="mt-1 text-gray-600">We end our session together, bringing a calm closure to our lesson.</p>
+                                    </div>
+                                </div>
+                                <div class="w-10 h-10 bg-teal-500 rounded-full flex items-center justify-center text-white font-bold z-10">💖</div>
+                                <div class="w-1/2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Online Logistics & Weekly Routine Section -->
+            <section id="logistics" class="scroll-mt-20 mt-16 md:mt-24">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold text-gray-900">Initial Setup & Weekly Routine</h2>
+                    <p class="mt-4 text-md text-gray-600">Here’s how to get started and what to expect each week in our class.</p>
+                </div>
+                <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-lg">
+                    
+                    <!-- Initial Setup -->
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4">Initial Setup Checklist</h3>
+                        <p class="text-gray-600 mb-6">Please complete these one-time steps before the first day of class.</p>
+                        <ul class="space-y-4">
+                            <li class="task-item">
+                                <input type="checkbox" id="task1" class="hidden">
+                                <label for="task1" class="flex items-center cursor-pointer">
+                                    <span class="w-6 h-6 border-2 border-gray-300 rounded-md mr-4 flex items-center justify-center transition">
+                                        <span class="text-white">✔</span>
+                                    </span>
+                                    <span class="text-gray-700 font-medium transition">Step 1: Look for the Invitation Email</span>
+                                </label>
+                            </li>
+                             <li class="task-item">
+                                <input type="checkbox" id="task2" class="hidden">
+                                <label for="task2" class="flex items-center cursor-pointer">
+                                    <span class="w-6 h-6 border-2 border-gray-300 rounded-md mr-4 flex items-center justify-center transition">
+                                        <span class="text-white">✔</span>
+                                    </span>
+                                    <span class="text-gray-700 font-medium transition">Step 2: Accept the Invite & Join the Class</span>
+                                </label>
+                            </li>
+                             <li class="task-item">
+                                <input type="checkbox" id="task3" class="hidden">
+                                <label for="task3" class="flex items-center cursor-pointer">
+                                    <span class="w-6 h-6 border-2 border-gray-300 rounded-md mr-4 flex items-center justify-center transition">
+                                        <span class="text-white">✔</span>
+                                    </span>
+                                    <span class="text-gray-700 font-medium transition">Step 3: Log In with Provided Credentials</span>
+                                </label>
+                            </li>
+                             <li class="task-item">
+                                <input type="checkbox" id="task4" class="hidden">
+                                <label for="task4" class="flex items-center cursor-pointer">
+                                    <span class="w-6 h-6 border-2 border-gray-300 rounded-md mr-4 flex items-center justify-center transition">
+                                        <span class="text-white">✔</span>
+                                    </span>
+                                    <span class="text-gray-700 font-medium transition">Step 4: Download Required Apps</span>
+                                </label>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <hr class="my-8 border-gray-200">
+
+                    <!-- Each Week -->
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4">What to Expect Each Week</h3>
+                         <ul class="space-y-3 list-disc list-inside text-gray-700">
+                            <li>Review learning materials for the new lesson.</li>
+                            <li>Go over homework assignments together.</li>
+                            <li>Complete fun writing and practice assignments.</li>
+                        </ul>
+                        <div class="mt-6 bg-teal-50 border-l-4 border-teal-400 p-4 rounded-r-lg">
+                             <h4 class="font-bold text-teal-800">A Note on Participation</h4>
+                             <p class="text-teal-700 mt-2">We encourage 100% participation to make learning fun and effective! For our younger students, a little extra help and encouragement from parents at home goes a long way in building their confidence. Your partnership is key to their success.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+            
+            <!-- Q&A Section -->
+            <section id="qa" class="scroll-mt-20 mt-16 md:mt-24">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold text-gray-900">Questions & Answers</h2>
+                     <p class="mt-4 text-md text-gray-600">Here are a few common questions. If you have others, please don't hesitate to reach out.</p>
+                </div>
+                <div class="max-w-3xl mx-auto space-y-4">
+                    <div class="accordion-item bg-white rounded-lg shadow-sm">
+                        <button class="accordion-header w-full flex justify-between items-center text-left p-4 font-semibold text-gray-800">
+                            What platform will the classes be on?
+                            <span class="accordion-icon transition-transform duration-300">▼</span>
+                        </button>
+                        <div class="accordion-content px-4 pb-4 text-gray-600">
+                            We will be using Google Classroom for our online classes. Students will be joining the individual class room link
+                        </div>
+                    </div>
+                     <div class="accordion-item bg-white rounded-lg shadow-sm">
+                        <button class="accordion-header w-full flex justify-between items-center text-left p-4 font-semibold text-gray-800">
+                            What if we have trouble logging in?
+                            <span class="accordion-icon transition-transform duration-300">▼</span>
+                        </button>
+                        <div class="accordion-content px-4 pb-4 text-gray-600">
+                            Please try to log in before 5 minutes of the start time, so that you have penty of time to troubleshoot the issues
+                        </div>
+                    </div>
+                     <div class="accordion-item bg-white rounded-lg shadow-sm">
+                        <button class="accordion-header w-full flex justify-between items-center text-left p-4 font-semibold text-gray-800">
+                            How can I contact you?
+                            <span class="accordion-icon transition-transform duration-300">▼</span>
+                        </button>
+                        <div class="accordion-content px-4 pb-4 text-gray-600">
+                            The best way to contact me or Rashmi via WhatsApp.  
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+        
+        <footer class="bg-white mt-16 md:mt-24">
+            <div class="container mx-auto py-6 px-4 sm:px-6 lg:px-8 text-center text-gray-500">
+                 <p class="text-sm">Thank you for your partnership in your child's education.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            
+            const agendaData = {
+                labels: ['Welcome (5m)', 'Class Structure (10m)', 'Logistics (10m)', 'Q&A (10m)', 'Closing (2m)'],
+                datasets: [{
+                    label: 'Meeting Minutes',
+                    data: [5, 10, 10, 10, 2],
+                    backgroundColor: [
+                        '#A7F3D0', // Emerald 200
+                        '#6EE7B7', // Emerald 300
+                        '#34D399', // Emerald 400
+                        '#10B981', // Emerald 500
+                        '#059669'  // Emerald 600
+                    ],
+                    borderColor: '#fdfaf7',
+                    borderWidth: 3,
+                    hoverOffset: 4
+                }]
+            };
+
+            const agendaConfig = {
+                type: 'doughnut',
+                data: agendaData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                font: {
+                                    family: "'Inter', sans-serif"
+                                }
+                            }
+                        },
+                        tooltip: {
+                             callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + ' minutes';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            };
+            
+            const agendaChartCtx = document.getElementById('agendaChart');
+            if(agendaChartCtx) {
+                new Chart(agendaChartCtx, agendaConfig);
+            }
+
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('main section');
+
+            const observerOptions = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.4 
+            };
+
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        navLinks.forEach(link => {
+                            link.classList.remove('active');
+                            if (link.getAttribute('href').substring(1) === entry.target.id) {
+                                link.classList.add('active');
+                            }
+                        });
+                    }
+                });
+            }, observerOptions);
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+            
+            navLinks.forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+            });
+
+            const accordionItems = document.querySelectorAll('.accordion-item');
+            accordionItems.forEach(item => {
+                const header = item.querySelector('.accordion-header');
+                header.addEventListener('click', () => {
+                    const isOpen = item.classList.contains('open');
+                    accordionItems.forEach(i => i.classList.remove('open'));
+                    if(!isOpen) {
+                        item.classList.add('open');
+                    }
+                });
+            });
+
+        });
+    </script>
+</body>
+</html>
+
+
+
+
